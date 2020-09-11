@@ -1,0 +1,14 @@
+{
+  "name": "mosaic",
+  "version": "0.1.0",
+  "description": "Lego Mosaic",
+  "author": "Stuart Roskelley <me@stuartrosk.com>",
+  "license": "tbd",
+  "main": "src/server/server.js",
+  "scripts": {
+    "start": "node src/server/server.js"
+  },
+  "dependencies": {
+    "jimp": "^0.16.1"
+  }
+}
