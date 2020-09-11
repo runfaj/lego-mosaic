@@ -8,7 +8,7 @@ const desiredResolution = {
   doCircles: true,
 };
 const inFileName = 'meh.jpg';
-const outFileName = 'temp/test3.png';
+const outFileName = 'temp/test4.png';
 
 const startTime = new Date();
 
@@ -64,7 +64,13 @@ function generateBlocks(imgWidth, imgHeight) {
   for(let row=0; row<blockSizes.length; row++) {
     blockSizes[row] = new Array(desiredResolution.width);
     for(let column=0; column<blockSizes[row].length; column++) {
-      blockSizes[row][column] = { width: wPixels, height: hPixels, averages: { r: 0, g: 0, b: 0, idx: 0 } };
+      blockSizes[row][column] = {
+        width: wPixels,
+        height: hPixels,
+        averages: { r: 0, g: 0, b: 0, idx: 0 },
+        uniqueColors: {},
+        calculatedColor: { r: 0, g: 0, b: 0 },
+      };
     }
   }
 
@@ -100,23 +106,11 @@ function fillAverages(blockSizes, image, imgWidth, imgHeight) {
 
     const color = getColor(this.bitmap.data, bufferIdx);
   
+    if (!currentBlock.uniqueColors[color.joined]) {
+      currentBlock.uniqueColors[color.joined] = 0;
+    }
+    currentBlock.uniqueColors[color.joined]++;
     
-    // put unique colors in array above
-    // then see if 3 or less colors. Determine if one is prominent over the others
-    // if so, pick that one instead
-    
-    /*
-      if (uniqueColors.r.indexOf(color.r) === -1) {
-        uniqueColors.r.push(color.r);
-      }
-      if (uniqueColors.g.indexOf(color.g) === -1) {
-        uniqueColors.g.push(color.g);
-      }
-      if (uniqueColors.b.indexOf(color.b) === -1) {
-        uniqueColors.b.push(color.b);
-      }
-    */
-
     //console.log(row, column, x, y, color.r, color.g, color.b)
     
     currentBlock.averages.r += color.r;
@@ -138,6 +132,27 @@ function fillAverages(blockSizes, image, imgWidth, imgHeight) {
     }
   });
 
+  // figure out unique color based on threshold logic
+  for (let row = 0; row < blockSizes.length; row++) {
+    for (let column = 0; column < blockSizes[row].length; column++) {
+      const currentBlock = blockSizes[row][column];
+      const colors = currentBlock.uniqueColors;
+      let highestColor = [0, ''];
+      Object.keys(colors).forEach(key => {
+        if (colors[key] > highestColor[0]) {
+          highestColor = [colors[key], key];
+        }
+      });
+      const newColor = highestColor[1].split('.');
+      currentBlock.calculatedColor = {
+        r: newColor[0],
+        g: newColor[1],
+        b: newColor[2],
+      };
+    }
+  }
+
+  // calculate average color for entire block
   for(let row=0; row < blockSizes.length; row++) {
     for(let column=0; column < blockSizes[row].length; column++) {
       const currentBlock = blockSizes[row][column];
@@ -214,11 +229,13 @@ function getColor(data, bufferIdx) {
     b: data[bufferIdx + 2],
     a: data[bufferIdx + 3] / 255,
   };
-  return rgba2rgb({
+  let output = rgba2rgb({
     r: desiredResolution.fillWith[0],
     g: desiredResolution.fillWith[1],
     b: desiredResolution.fillWith[2],
   }, color);
+  output.joined = [output.r, output.g, output.b].join('.');
+  return output;
 }
 
 function flattenArray(arr) {
@@ -260,7 +277,8 @@ function getBlock(x, y, blocks) {
 }
 
 function drawCircle(block) {
-  const color = [block.averages.r, block.averages.g, block.averages.b, 255];
+  //const color = [block.averages.r, block.averages.g, block.averages.b, 255];
+  const color = [block.calculatedColor.r, block.calculatedColor.g, block.calculatedColor.b, 255];
   const radius = Math.floor((block.width + block.height) / 2 / 2);
   const centerX = Math.floor(block.width / 2);
   const centerY = Math.floor(block.height / 2);
